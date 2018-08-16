@@ -1,28 +1,30 @@
 #!/bin/bash
-#Download File
-/usr/bin/curl -LO https://github.com/prometheus/node_exporter/releases/download/v0.16.0/node_exporter-0.16.0.linux-amd64.tar.gz /tmp
+NODE_EXPORTER_VERSION="0.16.0"
+wget https://github.com/prometheus/node_exporter/releases/download/v${NODE_EXPORTER_VERSION}/node_exporter-${NODE_EXPORTER_VERSION}.linux-amd64.tar.gz
+tar -xzvf node_exporter-${NODE_EXPORTER_VERSION}.linux-amd64.tar.gz
+cd node_exporter-${NODE_EXPORTER_VERSION}.linux-amd64
+cp node_exporter /usr/local/bin
 
-/usr/bin/tar -xvzf /tmp/node_exporter-0.16.0.linux-amd64.tar.gz
+# create user
+useradd --no-create-home --shell /bin/false node_exporter
 
-/usr/bin/mv node_exporter-0.16.0.linux-amd64.tar.gz /etc/node_exporter/
-/usr/bin/cd /etc/node_exporter
+chown node_exporter:node_exporter /usr/local/bin/node_exporter
 
-/usr/bin/touch /etc/systemd/system/node_exporter.service
-
-echo
-"[Unit]
+echo '[Unit]
 Description=Node Exporter
+Wants=network-online.target
+After=network-online.target
 
 [Service]
-User=prometheus
-ExecStart=/home/prometheus/Prometheus/node_exporter/node_exporter
+User=node_exporter
+Group=node_exporter
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
 
 [Install]
-WantedBy=default.target" >> /etc/systemd/system/node_exporter.service
+WantedBy=multi-user.target' > /etc/systemd/system/node_exporter.service
 
+# enable node_exporter in systemctl
 systemctl daemon-reload
-systemctl enable node_exporter.service
-systemctl start node_exporter.service
-
-netstat -anlp | grep LISTEN | grep 9100
-curl - http://your_server_ip:9100/metrics
+systemctl start node_exporter
+systemctl enable node_exporter
